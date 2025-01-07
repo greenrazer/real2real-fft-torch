@@ -1,4 +1,4 @@
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 def visualize_signals(original_signal, reconstructed_signal, title="Signal Comparison"):
     """

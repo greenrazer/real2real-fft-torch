@@ -86,11 +86,13 @@ class CustomISTFT(torch.nn.Module):
         self.n_fft = n_fft
         self.hop_length = hop_length if hop_length is not None else n_fft // 4
         self.win_length = win_length if win_length is not None else n_fft
-        self.window = (window if window is not None else torch.hann_window(n_fft)) * (1.5 / n_fft)
         self.normalized = normalized
+        self.window = (window if window is not None else torch.hann_window(n_fft))
         self.center = center
         self.length = length
         self.fft_core = FFTCore(n_fft, inverse=True)  # Use inverse FFT
+
+        self.edge_length = self.n_fft // 2
 
     def forward(self, z):
         # Unnormalize
@@ -110,7 +112,7 @@ class CustomISTFT(torch.nn.Module):
 
         if self.center:
             # Trim the padding added during STFT
-            signal = signal[..., self.n_fft // 2 : -self.n_fft // 2]
+            signal = signal[..., self.edge_length : -self.edge_length]
 
         if self.length is not None:
             # Match the desired output length
@@ -118,7 +120,7 @@ class CustomISTFT(torch.nn.Module):
 
         # # Step 4: Apply window normalization if needed
         if self.normalized:
-            signal = signal / self.window.sum()
+            signal = signal * (self.n_fft / (self.window.sum()*1.5))
 
         return signal
 
@@ -134,10 +136,11 @@ class CustomISTFT(torch.nn.Module):
 
         return full_spectrum
 
-    def _overlap_add(self, frames, hop_length=None, win_length=None, window=None):
+    def _overlap_add(self, frames, hop_length=None, win_length=None, window=None, edge_length=None):
         hop_length = hop_length if hop_length is not None else self.hop_length
         win_length = win_length if win_length is not None else self.win_length
         window = window if window is not None else self.window
+        edge_length = edge_length if edge_length is not None else self.edge_length
 
         output_length = (frames.size(-1) - 1) * hop_length + win_length
 

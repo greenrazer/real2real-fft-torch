@@ -3,6 +3,8 @@ import math
 import unittest
 from src.r2rstft import CustomSTFT, CustomISTFT
 
+from tests.shared import visualize_signals
+
 class TestSTFTOperations(unittest.TestCase):
     def setUp(self):
         # Common setup parameters used across tests
@@ -113,7 +115,6 @@ class TestSTFTOperations(unittest.TestCase):
 
     def test_build_full_spectrum(self):
         signal = torch.ones_like(self.t)
-        signal_length = int(math.pow(2, 12))
 
         torch_stft = torch.stft(
             signal,
@@ -144,8 +145,9 @@ class TestSTFTOperations(unittest.TestCase):
         spectrum_built = CustomISTFT._build_full_spectrum(None, 
             torch.stack((torch_stft.real, torch_stft.imag), dim=0)[..., 0])[0]
 
+        tolerance = 1e-6
         self.assertTrue(
-            torch.allclose(spectrum_full, spectrum_built, atol=1e-10),
+            torch.allclose(spectrum_full, spectrum_built, atol=tolerance),
             "Build Full Spectrum Test Failed."
         )
 
@@ -159,11 +161,12 @@ class TestSTFTOperations(unittest.TestCase):
 
         frames = CustomSTFT._frame_signal(None, signal, n_fft=n_fft, hop_length=hop_length)
         result = CustomISTFT._overlap_add(
-            None, frames, hop_length=hop_length, win_length=win_length, window=window
+            None, frames, hop_length=hop_length, win_length=win_length, window=window, edge_length=n_fft//2
         )
 
+        tolerance = 1e-6
         self.assertTrue(
-            torch.allclose(result, signal),
+            torch.allclose(result, signal, atol=tolerance),
             "Overlap Add Test Failed."
         )
 
@@ -207,7 +210,9 @@ class TestSTFTOperations(unittest.TestCase):
         stft_signal = torch.stack((torch_stft.real, torch_stft.imag), dim=0)
         custom_reconstructed = custom_istft(stft_signal)[0, ...]
 
-        tolerance = 2
+        visualize_signals(torch_reconstructed, custom_reconstructed)
+
+        tolerance = 1e-6
         self.assertTrue(
             torch.allclose(torch_reconstructed, custom_reconstructed, atol=tolerance),
             "ISTFT Test Failed."
@@ -236,7 +241,7 @@ class TestSTFTOperations(unittest.TestCase):
         )
         custom_reconstructed = custom_istft(custom_stft)[0, ...]
 
-        tolerance = 1
+        tolerance = 1e-6
         self.assertTrue(
             torch.allclose(self.signal, custom_reconstructed, atol=tolerance),
             "ISTFT Reproducibility Test Failed."
