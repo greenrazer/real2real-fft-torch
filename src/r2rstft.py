@@ -22,21 +22,20 @@ class CustomSTFT(torch.nn.Module):
         self.normalized = normalized
         self.center = center
 
-        # Initialize FFTCore
         self.fft_core = FFTCore(n_fft)
 
     def forward(self, x):
-        # Step 1: Centering and padding
+        #  Centering and padding
         if self.center:
             x = self._center_signal(x)
 
-        # Step 2: Segment the signal into overlapping windows
+        # Segment the signal into overlapping windows
         frames = self._frame_signal(x)
 
-        # Step 3: Apply window function to each frame
+        #  Apply window function to each frame
         frames = frames * self.window.unsqueeze(1)
 
-        # Step 4: Perform FFT on each frame
+        # Perform FFT on each frame
         parts = []
         for frame_idx in range(frames.shape[-1]):
             frame = frames[..., frame_idx]
@@ -86,13 +85,13 @@ class CustomISTFT(torch.nn.Module):
         self.n_fft = n_fft
         self.hop_length = hop_length if hop_length is not None else n_fft // 4
         self.win_length = win_length if win_length is not None else n_fft
+        self.edge_length = self.n_fft // 2
         self.normalized = normalized
-        self.window = (window if window is not None else torch.hann_window(n_fft))
+        self.window = (window if window is not None else torch.hann_window(n_fft)) * (3/2)
         self.center = center
         self.length = length
-        self.fft_core = FFTCore(n_fft, inverse=True)  # Use inverse FFT
 
-        self.edge_length = self.n_fft // 2
+        self.fft_core = FFTCore(n_fft, inverse=True)  # Use inverse FFT
 
     def forward(self, z):
         # Unnormalize
@@ -118,9 +117,7 @@ class CustomISTFT(torch.nn.Module):
             # Match the desired output length
             signal = signal[..., : self.length]
 
-        # # Step 4: Apply window normalization if needed
-        if self.normalized:
-            signal = signal * (self.n_fft / (self.window.sum()*1.5))
+        signal = signal * (self.n_fft/self.window.sum())
 
         return signal
 
