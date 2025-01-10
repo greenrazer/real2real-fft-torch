@@ -87,7 +87,9 @@ class CustomISTFT(torch.nn.Module):
         self.win_length = win_length if win_length is not None else n_fft
         self.edge_length = self.n_fft // 2
         self.normalized = normalized
-        self.window = (window if window is not None else torch.hann_window(n_fft)) * (3/2)
+        self.window = (window if window is not None else torch.hann_window(n_fft))
+        self.energy = torch.sum(self.window**2)
+        self.window = self.window/self.energy
         self.center = center
         self.length = length
 
@@ -117,7 +119,7 @@ class CustomISTFT(torch.nn.Module):
             # Match the desired output length
             signal = signal[..., : self.length]
 
-        signal = signal * (self.n_fft/self.window.sum())
+        signal = signal * self.window.sum()
 
         return signal
 

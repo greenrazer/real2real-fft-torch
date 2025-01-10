@@ -171,9 +171,51 @@ class TestSTFTOperations(unittest.TestCase):
         )
 
     def test_istft(self):
-        signal_length = int(math.pow(2, 10))
-        t = torch.arange(signal_length) / self.sampling_rate
-        signal = torch.sin(2 * torch.pi * 100 * t) + 0.1 * torch.randn_like(t)
+        torch_stft = torch.stft(
+            self.signal,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+            window=self.window,
+            normalized=True,
+            center=True,
+            return_complex=True,
+            pad_mode="reflect",
+        )
+
+        torch_reconstructed = torch.istft(
+            torch_stft,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            window=self.window,
+            win_length=self.win_length,
+            normalized=True,
+            center=True,
+            length=self.signal_length,
+        ).real
+
+        custom_istft = CustomISTFT(
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            window=self.window,
+            win_length=self.win_length,
+            normalized=True,
+            center=True,
+            length=self.signal_length,
+        )
+        stft_signal = torch.stack((torch_stft.real, torch_stft.imag), dim=0)
+        custom_reconstructed = custom_istft(stft_signal)[0, ...]
+
+        # visualize_signals(torch_reconstructed, custom_reconstructed)
+
+        tolerance = 1e-6
+        self.assertTrue(
+            torch.allclose(torch_reconstructed, custom_reconstructed, atol=tolerance),
+            "ISTFT Test Failed."
+        )
+
+    def test_istft_ones(self):
+        signal = torch.ones_like(self.signal)
 
         torch_stft = torch.stft(
             signal,
@@ -195,7 +237,7 @@ class TestSTFTOperations(unittest.TestCase):
             win_length=self.win_length,
             normalized=True,
             center=True,
-            length=signal_length,
+            length=self.signal_length,
         ).real
 
         custom_istft = CustomISTFT(
@@ -205,17 +247,17 @@ class TestSTFTOperations(unittest.TestCase):
             win_length=self.win_length,
             normalized=True,
             center=True,
-            length=signal_length,
+            length=self.signal_length,
         )
         stft_signal = torch.stack((torch_stft.real, torch_stft.imag), dim=0)
         custom_reconstructed = custom_istft(stft_signal)[0, ...]
 
-        visualize_signals(torch_reconstructed, custom_reconstructed)
+        # visualize_signals(torch_reconstructed, custom_reconstructed)
 
         tolerance = 1e-6
         self.assertTrue(
             torch.allclose(torch_reconstructed, custom_reconstructed, atol=tolerance),
-            "ISTFT Test Failed."
+            "ISTFT Ones Test Failed."
         )
 
     def test_istft_reproducibility(self):
