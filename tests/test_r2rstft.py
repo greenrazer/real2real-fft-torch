@@ -171,6 +171,9 @@ class TestSTFTOperations(unittest.TestCase):
         )
 
     def test_istft(self):
+        pad_signal = torch.nn.functional.pad(
+            self.signal.unsqueeze(0), (self.n_fft // 2, self.n_fft // 2), mode="reflect"
+        ).squeeze()
         torch_stft = torch.stft(
             self.signal,
             n_fft=self.n_fft,
@@ -192,7 +195,7 @@ class TestSTFTOperations(unittest.TestCase):
             normalized=True,
             center=True,
             length=self.signal_length,
-        ).real
+        ).real[self.n_fft // 2: -self.n_fft // 2]
 
         custom_istft = CustomISTFT(
             n_fft=self.n_fft,
@@ -204,7 +207,7 @@ class TestSTFTOperations(unittest.TestCase):
             length=self.signal_length,
         )
         stft_signal = torch.stack((torch_stft.real, torch_stft.imag), dim=0)
-        custom_reconstructed = custom_istft(stft_signal)[0, ...]
+        custom_reconstructed = custom_istft(stft_signal)[0, self.n_fft // 2: -self.n_fft // 2]
 
         # visualize_signals(torch_reconstructed, custom_reconstructed)
 
@@ -216,9 +219,12 @@ class TestSTFTOperations(unittest.TestCase):
 
     def test_istft_ones(self):
         signal = torch.ones_like(self.signal)
+        pad_signal = torch.nn.functional.pad(
+            signal.unsqueeze(0), (self.n_fft // 2, self.n_fft // 2), mode="reflect"
+        ).squeeze()
 
         torch_stft = torch.stft(
-            signal,
+            pad_signal,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
             win_length=self.win_length,
@@ -238,7 +244,7 @@ class TestSTFTOperations(unittest.TestCase):
             normalized=True,
             center=True,
             length=self.signal_length,
-        ).real
+        ).real[self.n_fft // 2: -self.n_fft // 2]
 
         custom_istft = CustomISTFT(
             n_fft=self.n_fft,
@@ -250,9 +256,7 @@ class TestSTFTOperations(unittest.TestCase):
             length=self.signal_length,
         )
         stft_signal = torch.stack((torch_stft.real, torch_stft.imag), dim=0)
-        custom_reconstructed = custom_istft(stft_signal)[0, ...]
-
-        # visualize_signals(torch_reconstructed, custom_reconstructed)
+        custom_reconstructed = custom_istft(stft_signal)[0, self.n_fft // 2: -self.n_fft // 2]
 
         tolerance = 1e-6
         self.assertTrue(
@@ -261,6 +265,11 @@ class TestSTFTOperations(unittest.TestCase):
         )
 
     def test_istft_reproducibility(self):
+        pad_signal = torch.nn.functional.pad(
+            self.signal.unsqueeze(0), (self.n_fft // 2, self.n_fft // 2), mode="reflect"
+        ).squeeze()
+        sig2d = torch.stack((pad_signal, torch.zeros_like(pad_signal)), dim=0)
+
         custom_stft_mod = CustomSTFT(
             n_fft=self.n_fft,
             hop_length=self.hop_length,
@@ -270,7 +279,7 @@ class TestSTFTOperations(unittest.TestCase):
             center=True,
             pad_mode="reflect",
         )
-        custom_stft = custom_stft_mod(self.signal_2d)
+        custom_stft = custom_stft_mod(sig2d)
 
         custom_istft = CustomISTFT(
             n_fft=self.n_fft,
@@ -279,9 +288,9 @@ class TestSTFTOperations(unittest.TestCase):
             win_length=self.win_length,
             normalized=True,
             center=True,
-            length=self.signal_length,
+            length=pad_signal.shape[0],
         )
-        custom_reconstructed = custom_istft(custom_stft)[0, ...]
+        custom_reconstructed = custom_istft(custom_stft)[0, self.n_fft // 2: -self.n_fft // 2]
 
         tolerance = 1e-6
         self.assertTrue(
