@@ -1,7 +1,7 @@
 import torch
 import math
 import unittest
-from src.r2rfft import FFTCore
+from src.r2rtorch.r2rfft import FFTCore
 
 
 class TestFFT(unittest.TestCase):

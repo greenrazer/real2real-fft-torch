@@ -1,7 +1,7 @@
 import torch
 import math
 import unittest
-from src.r2rstft import CustomSTFT, CustomISTFT
+from src.r2rtorch.r2rstft import CustomSTFT, CustomISTFT
 
 from tests.shared import visualize_signals
 
